@@ -1,0 +1,2905 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>REAPER Pro Web Mixer</title>
+  <style>
+    :root {
+      --bg-base: #111316;
+      --bg-panel: #181b20;
+      --bg-strip: #1f2329;
+      --bg-strip-hover: #262b33;
+      --bg-strip-selected: #242c38;
+      --border-color: #2e3440;
+      --border-subtle: #242932;
+      --text-main: #e2e8f0;
+      --text-muted: #8492a6;
+      --text-dim: #505c6e;
+      --accent-cyan: #00d2ff;
+      --accent-cyan-dim: rgba(0, 210, 255, 0.15);
+      --accent-gold: #ffb703;
+      --accent-gold-dim: rgba(255, 183, 3, 0.15);
+      --accent-red: #ff3344;
+      --accent-red-glow: rgba(255, 51, 68, 0.4);
+      --accent-green: #00e676;
+      --accent-purple: #9d4edd;
+      --meter-green: #00e676;
+      --meter-yellow: #ffb703;
+      --meter-orange: #ff7700;
+      --meter-red: #ff3344;
+      --strip-width: 110px;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      height: 100%;
+      height: -webkit-fill-available;
+      overflow: hidden;
+    }
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 13px;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      height: var(--app-height, 100dvh);
+      min-height: -webkit-fill-available;
+      max-height: 100dvh;
+      max-height: var(--app-height, 100dvh);
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #333a46;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475162;
+    }
+
+    /* TOP HEADER / TRANSPORT BAR */
+    header.top-bar {
+      height: 54px;
+      min-height: 54px;
+      background: linear-gradient(180deg, #1e2229 0%, #15181d 100%);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+      z-index: 100;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 180px;
+    }
+    .logo-badge {
+      background: linear-gradient(135deg, #00d2ff, #3a86ff);
+      color: #000;
+      font-weight: 900;
+      font-size: 11px;
+      letter-spacing: 1px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      box-shadow: 0 0 12px rgba(0, 210, 255, 0.35);
+    }
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #fff;
+    }
+
+    /* Transport Controls */
+    .transport-cluster {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,0,0,0.35);
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+    .t-btn {
+      background: #252b34;
+      border: 1px solid #363d4a;
+      color: var(--text-main);
+      width: 36px;
+      height: 34px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: all 0.15s ease;
+    }
+    .t-btn:hover {
+      background: #323a46;
+      border-color: #4b5563;
+      color: #fff;
+    }
+    .t-btn:active {
+      transform: scale(0.96);
+    }
+    .t-btn.active-play {
+      background: #00e676;
+      color: #000;
+      border-color: #00e676;
+      box-shadow: 0 0 10px rgba(0, 230, 118, 0.5);
+    }
+    .t-btn.active-pause {
+      background: var(--accent-gold);
+      color: #000;
+      border-color: var(--accent-gold);
+    }
+    .t-btn.active-rec {
+      background: var(--accent-red);
+      color: #fff;
+      border-color: var(--accent-red);
+      box-shadow: 0 0 12px var(--accent-red-glow);
+    }
+    .t-btn.active-repeat {
+      background: var(--accent-cyan);
+      color: #000;
+      border-color: var(--accent-cyan);
+    }
+
+    /* Position & Clock */
+    .time-display {
+      background: #0a0c0f;
+      border: 1px solid #232832;
+      border-radius: 6px;
+      padding: 4px 12px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      font-family: "SF Mono", "Roboto Mono", Consolas, monospace;
+    }
+    .time-beat {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      letter-spacing: 1px;
+    }
+    .time-sec {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .time-tempo {
+      font-size: 12px;
+      color: var(--accent-gold);
+      background: rgba(255, 183, 3, 0.1);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    /* Top Status & Controls */
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid #262c36;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #6b7280;
+    }
+    .status-dot.online {
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+    }
+    .status-dot.bridge {
+      background: var(--accent-purple);
+      box-shadow: 0 0 8px var(--accent-purple);
+    }
+    .status-dot.error {
+      background: var(--accent-red);
+    }
+
+    /* Performance & Diagnostic Badges in Header */
+    .perf-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid #28313e;
+      user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      letter-spacing: 0.3px;
+    }
+    .perf-label {
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .perf-val {
+      color: var(--accent-cyan);
+      font-family: monospace;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .perf-badge.cpu-warn .perf-val {
+      color: var(--accent-gold);
+    }
+    .perf-badge.cpu-alert .perf-val {
+      color: var(--accent-red);
+      font-weight: 800;
+    }
+    .perf-badge.drops-alert {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: var(--accent-red);
+      cursor: pointer;
+      animation: pulse-drop 1.5s infinite;
+    }
+    .perf-badge.drops-alert .perf-val {
+      color: #ff4d4d;
+      font-weight: 800;
+    }
+    .perf-badge.drops-zero .perf-val {
+      color: var(--accent-green);
+    }
+    @keyframes pulse-drop {
+      0%, 100% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+      50% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); }
+    }
+
+    .btn-view {
+      background: #252b34;
+      border: 1px solid #363d4a;
+      color: var(--text-main);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-view:hover {
+      background: #323a46;
+      color: #fff;
+    }
+
+    /* MAIN CONTAINER: MIXER STRIPS + MASTER + DRAWERS */
+    .mixer-workspace {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* MASTER TRACK (Pinned on Left) */
+    .master-channel-wrapper {
+      width: 140px;
+      height: 100%;
+      min-height: 0;
+      background: #14171d;
+      border-right: 2px solid #282f3c;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 20;
+      box-shadow: 4px 0 12px rgba(0,0,0,0.4);
+    }
+
+    /* NORMAL TRACKS SCROLL CONTAINER */
+    .tracks-scroll-area {
+      flex: 1;
+      height: 100%;
+      min-height: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+      padding: 0 4px;
+      background: var(--bg-base);
+    }
+
+    /* CHANNEL STRIP */
+    .channel-strip {
+      width: var(--strip-width);
+      min-width: var(--strip-width);
+      max-width: var(--strip-width);
+      background: var(--bg-strip);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+      position: relative;
+      transition: background 0.15s;
+    }
+    .channel-strip:hover {
+      background: var(--bg-strip-hover);
+    }
+    .channel-strip.selected {
+      background: var(--bg-strip-selected);
+      box-shadow: inset 0 0 0 1px var(--accent-cyan);
+    }
+    .channel-strip.is-folder {
+      border-left: 2px solid var(--accent-gold);
+    }
+
+    /* Channel Header */
+    .strip-header {
+      padding: 6px 6px 4px 6px;
+      background: rgba(0, 0, 0, 0.25);
+      border-bottom: 1px solid var(--border-subtle);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .track-color-bar {
+      height: 4px;
+      width: 100%;
+      border-radius: 2px;
+      background: #505c6e;
+    }
+    .track-meta {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .track-num {
+      font-size: 11px;
+      font-weight: 800;
+      background: #12151a;
+      color: #94a3b8;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+    .track-name {
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #fff;
+      flex: 1;
+    }
+    .folder-tag {
+      font-size: 9px;
+      background: rgba(255, 183, 3, 0.15);
+      color: var(--accent-gold);
+      padding: 1px 3px;
+      border-radius: 2px;
+      font-weight: bold;
+    }
+
+    /* Strip Insert & Send Slots */
+    .strip-racks {
+      padding: 4px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(0,0,0,0.15);
+    }
+    .rack-row-dual {
+      display: flex;
+      gap: 3px;
+      width: 100%;
+    }
+    .rack-button {
+      background: #16191f;
+      border: 1px solid #282f3a;
+      border-radius: 3px;
+      padding: 3px 5px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #94a3b8;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.12s;
+      overflow: hidden;
+    }
+    .rack-row-dual .rack-button {
+      flex: 1;
+      min-width: 0;
+      padding: 3px 4px;
+    }
+    .rack-row-dual .rack-button span:first-child {
+      font-size: 9px;
+    }
+    .rack-button:hover {
+      background: #242a36;
+      color: #fff;
+      border-color: #3f4a5c;
+    }
+    .rack-button.has-items {
+      color: var(--accent-cyan);
+      border-color: rgba(0, 210, 255, 0.3);
+      background: rgba(0, 210, 255, 0.05);
+    }
+    .rack-button.rack-input.has-items {
+      color: var(--accent-gold);
+      border-color: rgba(255, 183, 3, 0.3);
+      background: rgba(255, 183, 3, 0.05);
+    }
+    .rack-badge {
+      background: #0f1216;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 9px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 44px;
+    }
+
+    /* Pan Section */
+    .strip-pan-section {
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .pan-label-row {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+    .pan-slider-container {
+      width: 100%;
+      display: flex;
+      align-items: center;
+    }
+    .pan-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      background: #14171d;
+      border-radius: 3px;
+      outline: none;
+      border: 1px solid #2c333f;
+      cursor: pointer;
+    }
+    .pan-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0, 210, 255, 0.5);
+    }
+
+    /* Action Buttons (Mute, Solo, Rec, FX) */
+    .strip-buttons-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px;
+      padding: 6px 6px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .btn-ctl {
+      height: 24px;
+      font-size: 11px;
+      font-weight: 800;
+      border-radius: 3px;
+      border: 1px solid #333a46;
+      background: #1a1e24;
+      color: #64748b;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.1s;
+    }
+    .btn-ctl:hover {
+      border-color: #4f5a6b;
+      color: #cbd5e1;
+    }
+    .btn-ctl.mute-on {
+      background: var(--accent-red);
+      color: #fff;
+      border-color: var(--accent-red);
+      box-shadow: 0 0 8px var(--accent-red-glow);
+    }
+    .btn-ctl.solo-on {
+      background: var(--accent-gold);
+      color: #000;
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 8px rgba(255, 183, 3, 0.4);
+    }
+    .btn-ctl.rec-on {
+      background: #e63946;
+      color: #fff;
+      border-color: #ff3344;
+      animation: pulse-rec 1.2s infinite;
+    }
+    @keyframes pulse-rec {
+      0% { box-shadow: 0 0 0 0 rgba(255, 51, 68, 0.7); }
+      70% { box-shadow: 0 0 0 6px rgba(255, 51, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 51, 68, 0); }
+    }
+    .btn-ctl.fx-on {
+      background: rgba(0, 230, 118, 0.15);
+      color: var(--accent-green);
+      border-color: rgba(0, 230, 118, 0.4);
+    }
+    .btn-ctl.fx-bypassed {
+      background: #15181e;
+      color: #475569;
+      border-color: #272c36;
+      text-decoration: line-through;
+    }
+
+    /* FADER & METERS SECTION */
+    .strip-fader-section {
+      flex: 1;
+      min-height: 90px;
+      display: flex;
+      padding: 6px 4px 4px 4px;
+      position: relative;
+      align-items: stretch;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    /* dB Scale Marks */
+    .db-scale {
+      width: 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      font-size: 8px;
+      font-family: monospace;
+      color: #4b5565;
+      text-align: right;
+      padding-right: 2px;
+      pointer-events: none;
+    }
+    .db-scale span.unity {
+      color: var(--text-muted);
+      font-weight: bold;
+    }
+
+    /* Fader Track & Thumb */
+    .fader-track-container {
+      position: relative;
+      width: 26px;
+      display: flex;
+      justify-content: center;
+      touch-action: none;
+    }
+    .fader-rail {
+      position: absolute;
+      top: 6px;
+      bottom: 6px;
+      width: 4px;
+      background: #0d0f13;
+      border-radius: 2px;
+      border: 1px solid #262c37;
+    }
+    .fader-cap {
+      position: absolute;
+      left: 1px;
+      width: 24px;
+      height: 38px;
+      background: linear-gradient(180deg, #3d4654 0%, #222730 45%, #181c22 55%, #2a313d 100%);
+      border: 1px solid #4a5568;
+      border-radius: 3px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+      cursor: ns-resize;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    .fader-cap::after {
+      content: "";
+      width: 14px;
+      height: 2px;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 4px var(--accent-cyan);
+    }
+    .fader-cap:active {
+      border-color: var(--accent-cyan);
+    }
+
+    /* Dual Stereo Meters */
+    .stereo-meters {
+      display: flex;
+      gap: 2px;
+      width: 16px;
+      background: #090b0e;
+      border: 1px solid #1f242e;
+      border-radius: 2px;
+      padding: 1px;
+      position: relative;
+    }
+    .meter-bar {
+      flex: 1;
+      background: #111419;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column-reverse;
+    }
+    .meter-fill {
+      width: 100%;
+      height: 0%;
+      background: linear-gradient(0deg, var(--meter-green) 0%, var(--meter-green) 70%, var(--meter-yellow) 85%, var(--meter-orange) 94%, var(--meter-red) 100%);
+      transition: height 0.025s linear;
+    }
+    .meter-clip-led {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: #2a1114;
+      z-index: 5;
+    }
+    .meter-clip-led.clipped {
+      background: var(--meter-red);
+      box-shadow: 0 0 6px var(--meter-red);
+    }
+
+    /* Fader Readout */
+    .strip-footer {
+      padding: 3px 6px;
+      flex-shrink: 0;
+      background: rgba(0, 0, 0, 0.35);
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .vol-readout {
+      font-size: 11px;
+      font-family: monospace;
+      font-weight: 700;
+      color: #cbd5e1;
+      background: #0d1014;
+      border: 1px solid #222832;
+      border-radius: 3px;
+      padding: 2px 4px;
+      width: 100%;
+      text-align: center;
+      cursor: pointer;
+    }
+    .vol-readout:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    /* SIDE DRAWER (FX Manager & Sends Manager) */
+    .side-drawer {
+      position: fixed;
+      top: 54px;
+      right: -560px;
+      bottom: 0;
+      max-height: calc(var(--app-height, 100dvh) - 54px);
+      width: min(520px, 94vw);
+      background: #16191f;
+      border-left: 2px solid #2d3442;
+      box-shadow: -10px 0 30px rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      z-index: 200;
+      transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .side-drawer.open {
+      right: 0;
+    }
+    .drawer-header {
+      padding: 12px 16px;
+      background: #1c2027;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .drawer-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .drawer-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .drawer-subtitle {
+      font-size: 12px;
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+    .btn-close {
+      background: #252b36;
+      border: 1px solid #363e4d;
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .btn-close:hover {
+      color: #fff;
+      background: #333b49;
+    }
+
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* FX CARD IN DRAWER */
+    .fx-card {
+      background: #1d2129;
+      border: 1px solid #2e3644;
+      border-radius: 6px;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .fx-card:hover {
+      border-color: #404c5e;
+    }
+    .fx-card.bypassed {
+      opacity: 0.6;
+    }
+    .fx-card-header {
+      padding: 8px 12px;
+      background: #232832;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .fx-name-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      overflow: hidden;
+    }
+    .fx-card-header {
+      padding: 10px 14px;
+      background: #222731;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 52px;
+    }
+    .fx-power-btn {
+      width: 34px;
+      height: 34px;
+      min-width: 34px;
+      border-radius: 50%;
+      border: 1px solid #3c4656;
+      background: #181c22;
+      color: #64748b;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      touch-action: manipulation;
+      transition: all 0.15s;
+    }
+    .fx-power-btn.active {
+      background: rgba(0, 230, 118, 0.25);
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+      box-shadow: 0 0 8px rgba(0, 230, 118, 0.5);
+    }
+    .fx-title {
+      font-weight: 700;
+      color: #fff;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .fx-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .fx-mini-btn {
+      background: #2b3341;
+      border: 1px solid #3d485b;
+      color: #cbd5e1;
+      height: 34px;
+      min-width: 36px;
+      padding: 0 12px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+      transition: all 0.12s;
+    }
+    .fx-mini-btn:hover, .fx-mini-btn:active {
+      background: #3c475a;
+      color: #fff;
+      border-color: #4f5d75;
+    }
+    .fx-mini-btn.btn-del {
+      min-width: 34px;
+      font-size: 18px;
+      padding: 0;
+    }
+    .fx-mini-btn.btn-del:hover, .fx-mini-btn.btn-del:active {
+      background: #7f1d1d;
+      border-color: #ef4444;
+      color: #fff;
+    }
+
+    /* Preset & Parameter Tweaker inside FX Card (iPad Friendly) */
+    .fx-card-body {
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #191d24;
+      border-top: 1px solid #272f3d;
+    }
+    .fx-preset-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: #12151c;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #262e3d;
+      min-height: 44px;
+    }
+    .preset-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #f1f5f9;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+      text-align: center;
+    }
+    .preset-nav-btn {
+      background: #252d3a;
+      border: 1px solid #3c485c;
+      color: #f8fafc;
+      min-width: 44px;
+      height: 36px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+      transition: all 0.12s;
+    }
+    .preset-nav-btn:hover, .preset-nav-btn:active {
+      background: #394559;
+      border-color: var(--accent-cyan);
+      color: #fff;
+    }
+
+    /* Parameters Grid & Large Touch Sliders */
+    .params-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 380px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .param-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: #12151b;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #232a36;
+    }
+    .param-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+    .param-name {
+      color: #e2e8f0;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+    .param-val {
+      color: var(--accent-cyan);
+      font-family: monospace;
+      font-weight: 700;
+      font-size: 13px;
+      background: rgba(0, 210, 255, 0.08);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+    .param-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 12px;
+      background: #1d232c;
+      border: 1px solid #2d3848;
+      border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+      touch-action: pan-y;
+      margin: 4px 0;
+    }
+    .param-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+    }
+    .param-slider::-moz-range-thumb {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+    }
+
+    /* SENDS DRAWER ITEMS */
+    .send-item-card {
+      background: #1c2027;
+      border: 1px solid #2d3442;
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .send-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .send-dest-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .send-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .send-vol-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 12px;
+      background: #111419;
+      border-radius: 6px;
+      outline: none;
+      border: 1px solid #2d3644;
+      touch-action: pan-y;
+      margin: 2px 0;
+    }
+    .send-vol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--accent-gold);
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+      cursor: pointer;
+    }
+    .send-vol-slider::-moz-range-thumb {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--accent-gold);
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+      cursor: pointer;
+    }
+    .send-val-badge {
+      font-size: 13px;
+      font-family: monospace;
+      font-weight: 700;
+      color: var(--accent-gold);
+      min-width: 65px;
+      text-align: right;
+    }
+
+    /* MODALS */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open {
+      display: flex;
+    }
+    .modal-dialog {
+      width: 640px;
+      max-width: 94vw;
+      max-height: 85vh;
+      max-height: 85dvh;
+      background: #181b21;
+      border: 1px solid #363e4e;
+      border-radius: 8px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 14px 18px;
+      background: #1f232b;
+      border-bottom: 1px solid #2d3442;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .modal-search-bar {
+      padding: 12px 18px;
+      background: #14171d;
+      border-bottom: 1px solid #252b36;
+      display: flex;
+      gap: 10px;
+    }
+    .search-input {
+      flex: 1;
+      background: #1e222a;
+      border: 1px solid #343d4c;
+      border-radius: 4px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+    }
+    .search-input:focus {
+      border-color: var(--accent-cyan);
+    }
+    .cat-tabs {
+      display: flex;
+      gap: 6px;
+      padding: 8px 18px;
+      background: #16191f;
+      border-bottom: 1px solid #252b36;
+      overflow-x: auto;
+    }
+    .cat-pill {
+      background: #222731;
+      border: 1px solid #323a49;
+      color: #94a3b8;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .cat-pill:hover, .cat-pill.active {
+      background: var(--accent-cyan);
+      color: #000;
+      border-color: var(--accent-cyan);
+    }
+    .modal-list-body {
+      flex: 1;
+      min-height: 0;
+      max-height: 62dvh;
+      overflow-y: auto;
+      padding: 12px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      touch-action: pan-y;
+    }
+    .plugin-row-item {
+      padding: 8px 12px;
+      background: #1d2128;
+      border: 1px solid #2c3340;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .plugin-row-item:hover {
+      background: #252b36;
+      border-color: var(--accent-cyan);
+      transform: translateX(2px);
+    }
+    .plugin-row-title {
+      font-weight: 700;
+      color: #fff;
+    }
+    .plugin-row-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* iPad and Touch Ergonomics */
+    @media (max-width: 1024px), (pointer: coarse) {
+      .param-slider {
+        height: 14px;
+      }
+      .param-slider::-webkit-slider-thumb {
+        width: 32px;
+        height: 32px;
+      }
+      .preset-nav-btn {
+        min-width: 48px;
+        height: 40px;
+        font-size: 16px;
+      }
+      .fx-power-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 18px;
+      }
+      .fx-mini-btn {
+        height: 38px;
+        padding: 0 14px;
+        font-size: 13px;
+      }
+      .btn-view {
+        min-height: 40px;
+        padding: 8px 16px;
+        font-size: 13px;
+      }
+      .rack-button {
+        padding: 5px 6px;
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER / TRANSPORT -->
+  <header class="top-bar">
+    <div class="brand">
+      <div class="logo-badge">REAPER</div>
+      <div class="brand-title">WEB MIXER PRO</div>
+    </div>
+
+    <!-- Transport Controls -->
+    <div class="transport-cluster">
+      <button class="t-btn" id="btn-rewind" title="Rewind to start">|◀◀</button>
+      <button class="t-btn" id="btn-play" title="Play">▶</button>
+      <button class="t-btn" id="btn-pause" title="Pause">❚❚</button>
+      <button class="t-btn" id="btn-stop" title="Stop">■</button>
+      <button class="t-btn" id="btn-record" title="Record">●</button>
+      <button class="t-btn" id="btn-repeat" title="Repeat loop">🔁</button>
+    </div>
+
+    <!-- Clock / Position Display -->
+    <div class="time-display">
+      <div class="time-beat" id="disp-beat">1.1.00</div>
+      <div class="time-sec" id="disp-time">0:00.000</div>
+      <div class="time-tempo" id="disp-tempo">120 BPM</div>
+    </div>
+
+    <!-- Status, Performance & View Options -->
+    <div class="top-actions">
+      <!-- CPU Usage Metric -->
+      <div class="status-badge perf-badge" id="badge-cpu" title="REAPER CPU Load">
+        <span class="perf-label">CPU</span>
+        <span class="perf-val" id="val-cpu">0.0%</span>
+      </div>
+
+      <!-- Audio Dropouts / Underruns Metric -->
+      <div class="status-badge perf-badge drops-zero" id="badge-drops" title="Audio Buffer Dropouts / Underruns (Click to reset)">
+        <span class="perf-label">DROPS</span>
+        <span class="perf-val" id="val-drops">0</span>
+      </div>
+
+      <div class="status-badge" id="badge-reaper">
+        <div class="status-dot online" id="dot-reaper"></div>
+        <span>REAPER</span>
+      </div>
+      <div class="status-badge" id="badge-bridge" title="Companion Lua Bridge for FX & Routing">
+        <div class="status-dot bridge" id="dot-bridge"></div>
+        <span>FX Bridge</span>
+      </div>
+      <button class="btn-view" id="btn-zoom-width" title="Toggle Channel Width">↔ Width</button>
+      <button class="btn-view" id="btn-master-toggle" title="Toggle Master Track">🎚 Master</button>
+    </div>
+  </header>
+
+  <!-- MAIN MIXER WORKSPACE -->
+  <div class="mixer-workspace">
+
+    <!-- MASTER STRIP -->
+    <div class="master-channel-wrapper" id="master-strip-wrapper">
+      <!-- Master channel strip inserted dynamically -->
+    </div>
+
+    <!-- NORMAL TRACKS SCROLL AREA -->
+    <div class="tracks-scroll-area" id="tracks-container">
+      <!-- Channels inserted dynamically -->
+    </div>
+
+  </div>
+
+  <!-- SIDE DRAWER: TRACK FX MANAGER -->
+  <div class="side-drawer" id="fx-drawer">
+    <div class="drawer-header">
+      <div class="drawer-title-group">
+        <div class="drawer-title" id="fx-drawer-track-name">Track FX</div>
+        <div class="drawer-subtitle" id="fx-drawer-track-idx">#1</div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-view" id="btn-open-add-fx" style="background: var(--accent-cyan); color: #000; font-weight: bold;">+ Add Plugin</button>
+        <button class="btn-close" id="btn-close-fx-drawer">&times;</button>
+      </div>
+    </div>
+    <div class="drawer-body" id="fx-drawer-body">
+      <!-- FX list will be rendered here -->
+    </div>
+  </div>
+
+  <!-- SIDE DRAWER: TRACK SENDS & ROUTING -->
+  <div class="side-drawer" id="sends-drawer">
+    <div class="drawer-header">
+      <div class="drawer-title-group">
+        <div class="drawer-title" id="sends-drawer-track-name">Sends & Routing</div>
+        <div class="drawer-subtitle" id="sends-drawer-track-idx">#1</div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-view" id="btn-open-add-send" style="background: var(--accent-gold); color: #000; font-weight: bold;">+ New Send</button>
+        <button class="btn-close" id="btn-close-sends-drawer">&times;</button>
+      </div>
+    </div>
+    <div class="drawer-body" id="sends-drawer-body">
+      <!-- Sends list will be rendered here -->
+    </div>
+  </div>
+
+  <!-- MODAL: ADD PLUGIN SEARCH & CATALOG (WITH WAVES!) -->
+  <div class="modal-overlay" id="modal-add-fx">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">Add Plugin (FX)</div>
+        <button class="btn-close" id="btn-close-add-fx-modal">&times;</button>
+      </div>
+      <div class="modal-search-bar">
+        <input type="text" class="search-input" id="fx-search-input" placeholder="Search plugins (e.g. CLA-76, SSL, Pro-Q, H-Delay, ReaEQ)..." autocomplete="off" />
+      </div>
+      <div class="cat-tabs" id="fx-cat-tabs">
+        <div class="cat-pill active" data-cat="all">All / Search</div>
+        <div class="cat-pill" data-cat="waves" style="color: var(--accent-gold); border-color: rgba(255,183,3,0.4);">Waves Audio</div>
+        <div class="cat-pill" data-cat="fabfilter" style="color: var(--accent-cyan); border-color: rgba(0,210,255,0.4);">FabFilter</div>
+        <div class="cat-pill" data-cat="valhalla">Valhalla DSP</div>
+        <div class="cat-pill" data-cat="cockos">Cockos Essentials</div>
+        <div class="cat-pill" data-cat="izotope">iZotope & Creative</div>
+        <div class="cat-pill" data-cat="js">JS Plugins</div>
+      </div>
+      <div class="modal-list-body" id="modal-fx-results">
+        <!-- Results rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD SEND -->
+  <div class="modal-overlay" id="modal-add-send">
+    <div class="modal-dialog" style="width: 440px;">
+      <div class="modal-header">
+        <div class="modal-title">Create Send to Track</div>
+        <button class="btn-close" id="btn-close-add-send-modal">&times;</button>
+      </div>
+      <div class="modal-list-body" id="modal-send-targets">
+        <!-- Target tracks rendered here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SELECT INPUT -->
+  <div class="modal-overlay" id="modal-input-select">
+    <div class="modal-dialog" style="width: 520px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="input-modal-track-name">Select Track Input</div>
+          <div style="font-size: 11px; color: var(--accent-cyan);" id="input-modal-current">Current Input: In 1</div>
+        </div>
+        <button class="btn-close" id="btn-close-input-modal">&times;</button>
+      </div>
+
+      <!-- Monitoring Mode Toggles -->
+      <div style="padding: 10px 18px; background: #13161c; border-bottom: 1px solid #252b36; display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 11px; color: var(--text-muted); font-weight: bold;">Record Monitoring:</span>
+        <div style="display: flex; gap: 4px;">
+          <button class="btn-ctl" id="btn-mon-off" style="width: auto; padding: 2px 10px; font-size: 11px;">OFF</button>
+          <button class="btn-ctl" id="btn-mon-on" style="width: auto; padding: 2px 10px; font-size: 11px;">ON (Normal)</button>
+          <button class="btn-ctl" id="btn-mon-auto" style="width: auto; padding: 2px 10px; font-size: 11px;">AUTO (Tape)</button>
+        </div>
+      </div>
+
+      <div class="cat-tabs" id="input-cat-tabs">
+        <div class="cat-pill active" data-incat="mono">Audio Mono Inputs</div>
+        <div class="cat-pill" data-incat="stereo">Stereo Pairs</div>
+        <div class="cat-pill" data-incat="midi">MIDI Inputs</div>
+        <div class="cat-pill" data-incat="none">Disable Input</div>
+      </div>
+
+      <div class="modal-list-body" id="modal-input-results" style="max-height: 360px;">
+        <!-- Input choices rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT ENGINE -->
+  <script>
+    // State
+    const state = {
+      tracks: [], // Track 0 = Master, 1..N = Tracks
+      playstate: 0,
+      isRepeatOn: 0,
+      position_seconds: 0,
+      position_beats: "1.1.00",
+      position_str: "0:00.000",
+      activeDrawerTrack: null,
+      activeDrawerType: null, // "fx" or "sends"
+      activeInputTrack: null,
+      bridgeOnline: false,
+      lastBridgePing: 0,
+      bridgeReqCounter: 1000,
+      bridgeCallbacks: {},
+      popularFx: [],
+      projectInputs: null,
+      trackInputsMap: {},
+      activeFxCategory: "all",
+      stripWidthMode: 0 // 0: normal (110px), 1: wide (145px), 2: compact (82px)
+    };
+
+    const STRIP_WIDTHS = ["110px", "145px", "82px"];
+
+    // REAPER dB / Volume math
+    function volToDb(vol) {
+      const v = parseFloat(vol);
+      if (v <= 0.0000000298) return -150;
+      return Math.log(v) * 8.68588963806;
+    }
+
+    function dbToVol(db) {
+      if (db <= -140) return 0;
+      return Math.exp(db / 8.68588963806);
+    }
+
+    function formatDb(vol) {
+      const db = volToDb(vol);
+      if (db <= -100) return "-inf dB";
+      return (db >= 0 ? "+" : "") + db.toFixed(1) + " dB";
+    }
+
+    function formatPan(pan) {
+      const p = parseFloat(pan);
+      if (Math.abs(p) < 0.01) return "C";
+      if (p > 0) return Math.round(p * 100) + "%R";
+      return Math.round(p * -100) + "%L";
+    }
+
+    // Fader normalized position (0.0 to 1.0) mapping
+    function volToFaderNorm(vol) {
+      const db = volToDb(vol);
+      if (db <= -60) {
+        if (db <= -100) return 0;
+        return (db + 100) / 40 * 0.12;
+      } else if (db <= 0) {
+        return 0.12 + ((db + 60) / 60) * 0.63;
+      } else {
+        return 0.75 + (Math.min(db, 12) / 12) * 0.25;
+      }
+    }
+
+    function faderNormToVol(norm) {
+      const n = Math.max(0, Math.min(1, norm));
+      let db = -150;
+      if (n <= 0.005) {
+        return 0;
+      } else if (n < 0.12) {
+        db = -100 + (n / 0.12) * 40;
+      } else if (n <= 0.75) {
+        db = -60 + ((n - 0.12) / 0.63) * 60;
+      } else {
+        db = ((n - 0.75) / 0.25) * 12;
+      }
+      return dbToVol(db);
+    }
+
+    // Native REAPER Web Communication
+    let g_req_queue = [];
+    let g_polling = true;
+
+    function wwr_req(cmd) {
+      g_req_queue.push(cmd);
+    }
+
+    let g_batch_tick = 0;
+
+    async function sendNextBatch() {
+      g_batch_tick++;
+      let reqStr = "TRACK;TRANSPORT;BEATPOS";
+      if (g_req_queue.length > 0) {
+        reqStr += ";" + g_req_queue.join(";");
+        g_req_queue = [];
+      }
+
+      // Periodic check for bridge heartbeat & system stats (every ~450ms at 30ms ticks)
+      const needStats = (g_batch_tick % 15 === 0);
+      if (needStats) {
+        reqStr += ";GET/EXTSTATE/reaper_web_mixer/heartbeat;GET/EXTSTATE/reaper_web_mixer/stats";
+      }
+
+      // Check ExtState responses for bridge only when waiting for an RPC callback
+      const hasPendingCallbacks = Object.keys(state.bridgeCallbacks).length > 0;
+      if (hasPendingCallbacks) {
+        reqStr += ";GET/EXTSTATE/reaper_web_mixer/resp_id;GET/EXTSTATE/reaper_web_mixer/resp_count";
+        for (let i = 0; i < 20; i++) {
+          reqStr += `;GET/EXTSTATE/reaper_web_mixer/resp_${i}`;
+        }
+      }
+
+      try {
+        const resp = await fetch("/_/" + reqStr, { cache: "no-store" });
+        if (resp.ok) {
+          const text = await resp.text();
+          handleReaperReply(text);
+          setOnlineStatus(true);
+        } else {
+          setOnlineStatus(false);
+        }
+      } catch (err) {
+        setOnlineStatus(false);
+      }
+
+      if (g_polling) {
+        setTimeout(sendNextBatch, 30); // 30ms interval = ~33.3 FPS for instant responsive volume meters
+      }
+    }
+
+    function setOnlineStatus(online) {
+      const dot = document.getElementById("dot-reaper");
+      if (online) {
+        dot.className = "status-dot online";
+      } else {
+        dot.className = "status-dot error";
+      }
+    }
+
+    function updateSystemStatsUI(stats) {
+      if (!stats) return;
+
+      // Update CPU%
+      const cpuEl = document.getElementById("val-cpu");
+      const badgeCpu = document.getElementById("badge-cpu");
+      if (cpuEl && badgeCpu) {
+        const cpuVal = typeof stats.cpu === "number" ? stats.cpu : parseFloat(stats.cpu) || 0;
+        cpuEl.textContent = cpuVal.toFixed(1) + "%";
+        badgeCpu.classList.remove("cpu-warn", "cpu-alert");
+        if (cpuVal >= 80) {
+          badgeCpu.classList.add("cpu-alert");
+        } else if (cpuVal >= 50) {
+          badgeCpu.classList.add("cpu-warn");
+        }
+      }
+
+      // Update Audio Dropouts / Xruns
+      const dropsEl = document.getElementById("val-drops");
+      const badgeDrops = document.getElementById("badge-drops");
+      if (dropsEl && badgeDrops) {
+        const drops = stats.drops || 0;
+        dropsEl.textContent = drops;
+        badgeDrops.classList.remove("drops-alert", "drops-zero");
+        if (drops > 0) {
+          badgeDrops.classList.add("drops-alert");
+          badgeDrops.title = `Audio Buffer Dropouts: ${drops} (Audio: ${stats.audio_drops || 0}, Media: ${stats.media_drops || 0}). Click to reset.`;
+        } else {
+          badgeDrops.classList.add("drops-zero");
+          badgeDrops.title = "Audio Buffer: Clean (0 dropouts)";
+        }
+      }
+    }
+
+    // Handle replies
+    function handleReaperReply(text) {
+      const lines = text.split("\n");
+      const extstateChunks = {};
+      let respId = null;
+      let respCount = 1;
+      let heartbeat = null;
+
+      for (let line of lines) {
+        if (!line) continue;
+        const tok = line.split("\t");
+        const cmd = tok[0];
+
+        if (cmd === "TRANSPORT") {
+          state.playstate = parseInt(tok[1]) || 0;
+          state.position_seconds = parseFloat(tok[2]) || 0;
+          state.isRepeatOn = parseInt(tok[3]) || 0;
+          state.position_str = tok[4] || "0:00.000";
+          state.position_beats = tok[5] || "1.1.00";
+          updateTransportUI();
+        } else if (cmd === "BEATPOS") {
+          const bpm = parseFloat(tok[6]);
+          if (bpm) {
+            document.getElementById("disp-tempo").textContent = Math.round(bpm) + " BPM";
+          }
+        } else if (cmd === "TRACK") {
+          const idx = parseInt(tok[1]);
+          const trackData = {
+            index: idx,
+            name: tok[2] || (idx === 0 ? "MASTER" : "Track " + idx),
+            flags: parseInt(tok[3]) || 0,
+            volume: parseFloat(tok[4]) || 0,
+            pan: parseFloat(tok[5]) || 0,
+            peak: parseInt(tok[6]) || -1500,
+            meter_pos: parseInt(tok[7]) || -1500,
+            sendcnt: parseInt(tok[10]) || 0,
+            recvcnt: parseInt(tok[11]) || 0,
+            color: parseInt(tok[13]) || 0
+          };
+          updateTrackData(trackData);
+        } else if (cmd === "EXTSTATE" && tok[1] === "reaper_web_mixer") {
+          const key = tok[2];
+          const val = tok[3] || "";
+          if (key === "heartbeat") {
+            heartbeat = val;
+          } else if (key === "stats") {
+            try {
+              const statsObj = JSON.parse(val);
+              updateSystemStatsUI(statsObj);
+            } catch (e) {}
+          } else if (key === "resp_id") {
+            respId = val;
+          } else if (key === "resp_count") {
+            respCount = parseInt(val) || 1;
+          } else if (key.startsWith("resp_") && key !== "resp_id" && key !== "resp_count") {
+            const chunkIdx = parseInt(key.replace("resp_", ""));
+            if (!isNaN(chunkIdx)) {
+              extstateChunks[chunkIdx] = val;
+            }
+          }
+        }
+      }
+
+      // Check Bridge Heartbeat
+      if (heartbeat) {
+        state.bridgeOnline = true;
+        state.lastBridgePing = Date.now();
+        document.getElementById("dot-bridge").className = "status-dot bridge";
+      } else if (Date.now() - state.lastBridgePing > 3000) {
+        state.bridgeOnline = false;
+        document.getElementById("dot-bridge").className = "status-dot";
+      }
+
+      // Reassemble ExtState Bridge RPC responses
+      if (respId && state.bridgeCallbacks[respId]) {
+        let assembled = "";
+        for (let i = 0; i < respCount; i++) {
+          assembled += extstateChunks[i] || "";
+        }
+        if (assembled) {
+          try {
+            const jsonResp = JSON.parse(assembled);
+            const cb = state.bridgeCallbacks[respId];
+            delete state.bridgeCallbacks[respId];
+            if (jsonResp.ok && jsonResp.result) {
+              cb.resolve(jsonResp.result);
+            } else {
+              cb.reject(jsonResp.error || "Bridge call failed");
+            }
+          } catch (e) {
+            console.error("JSON parse error for RPC response:", e);
+          }
+        }
+      }
+    }
+
+    // Robust Sequential IPC Queue for Lua Bridge ExtState RPC
+    const g_bridgeRpcQueue = [];
+    let g_bridgeRpcActive = false;
+
+    function callBridge(action, params = {}) {
+      return new Promise((resolve, reject) => {
+        g_bridgeRpcQueue.push({ action, params, resolve, reject });
+        processBridgeRpcQueue();
+      });
+    }
+
+    function processBridgeRpcQueue() {
+      if (g_bridgeRpcActive || g_bridgeRpcQueue.length === 0) return;
+      g_bridgeRpcActive = true;
+      const item = g_bridgeRpcQueue.shift();
+
+      const reqId = ++state.bridgeReqCounter;
+      state.bridgeCallbacks[reqId] = {
+        resolve: (val) => {
+          g_bridgeRpcActive = false;
+          item.resolve(val);
+          setTimeout(processBridgeRpcQueue, 10);
+        },
+        reject: (err) => {
+          g_bridgeRpcActive = false;
+          item.reject(err);
+          setTimeout(processBridgeRpcQueue, 10);
+        },
+        timestamp: Date.now()
+      };
+
+      const payload = JSON.stringify({ id: reqId, action: item.action, params: item.params });
+      wwr_req("SET/EXTSTATE/reaper_web_mixer/cmd/" + encodeURIComponent(payload));
+
+      setTimeout(() => {
+        if (state.bridgeCallbacks[reqId]) {
+          delete state.bridgeCallbacks[reqId];
+          g_bridgeRpcActive = false;
+          item.reject("Bridge request timed out");
+          processBridgeRpcQueue();
+        }
+      }, 6000);
+    }
+
+    // Fetch batch inputs periodically
+    async function syncTrackInputs() {
+      if (!state.bridgeOnline) return;
+      // Skip background input sync when user is browsing modals
+      if (document.querySelector(".modal-overlay.open")) return;
+      try {
+        const data = await callBridge("get_track_inputs_batch");
+        if (data && data.tracks) {
+          data.tracks.forEach(tr => {
+            state.trackInputsMap[tr.track_index] = tr;
+            const badge = document.getElementById("input-badge-" + tr.track_index);
+            if (badge) {
+              badge.textContent = tr.name || "In 1";
+              const btn = badge.closest(".rack-input");
+              if (btn) btn.classList.toggle("has-items", tr.recinput >= 0);
+            }
+          });
+        }
+      } catch (e) { /* ignore silent sync */ }
+    }
+    setInterval(syncTrackInputs, 2000);
+
+    // Update track model and DOM
+    function updateTrackData(trackData) {
+      let existing = state.tracks.find(t => t.index === trackData.index);
+      if (!existing) {
+        existing = { ...trackData, fxList: [], sendsList: [] };
+        state.tracks.push(existing);
+        state.tracks.sort((a, b) => a.index - b.index);
+        renderAllStrips();
+      } else {
+        Object.assign(existing, trackData);
+        updateStripDOM(existing);
+      }
+    }
+
+    function updateTransportUI() {
+      document.getElementById("disp-beat").textContent = state.position_beats;
+      document.getElementById("disp-time").textContent = state.position_str;
+
+      document.getElementById("btn-play").className = "t-btn" + (state.playstate === 1 ? " active-play" : "");
+      document.getElementById("btn-pause").className = "t-btn" + (state.playstate === 2 ? " active-pause" : "");
+      document.getElementById("btn-record").className = "t-btn" + (state.playstate === 5 ? " active-rec" : "");
+      document.getElementById("btn-repeat").className = "t-btn" + (state.isRepeatOn ? " active-repeat" : "");
+    }
+
+    // Render Channel Strip HTML
+    function createStripElement(track) {
+      const isMaster = track.index === 0;
+      const strip = document.createElement("div");
+      strip.className = "channel-strip" + (isMaster ? " master-strip" : "");
+      strip.id = "strip-" + track.index;
+      strip.dataset.trackIndex = track.index;
+
+      const isMuted = (track.flags & 8) !== 0;
+      const isSoloed = (track.flags & 16) !== 0;
+      const isArmed = (track.flags & 64) !== 0;
+      const hasFx = (track.flags & 4) !== 0;
+      const isFolder = (track.flags & 1) !== 0;
+
+      // Track color
+      let colorCss = "#4a5568";
+      if (track.color && track.color !== 0) {
+        const r = (track.color >> 16) & 0xff;
+        const g = (track.color >> 8) & 0xff;
+        const b = track.color & 0xff;
+        colorCss = `rgb(${r},${g},${b})`;
+      } else if (isMaster) {
+        colorCss = "linear-gradient(90deg, #ff3344, #ff8800)";
+      }
+
+      const inputInfo = state.trackInputsMap[track.index];
+      const inputDisplayName = inputInfo ? inputInfo.name : "In 1";
+
+      strip.innerHTML = `
+        <div class="strip-header">
+          <div class="track-color-bar" style="background: ${colorCss};"></div>
+          <div class="track-meta">
+            <span class="track-num">${isMaster ? "M" : track.index}</span>
+            <span class="track-name" title="${track.name}">${track.name}</span>
+            ${isFolder ? '<span class="folder-tag">DIR</span>' : ''}
+          </div>
+        </div>
+
+        <div class="strip-racks">
+          <div class="rack-button rack-fx ${hasFx ? 'has-items' : ''}" title="Track FX & Plugins">
+            <span>FX</span>
+            <span class="rack-badge fx-count-badge">${hasFx ? 'ON' : 'ADD'}</span>
+          </div>
+          <div class="rack-row-dual">
+            <div class="rack-button rack-sends ${track.sendcnt > 0 ? 'has-items' : ''}" title="Sends & Routing">
+              <span>SEND</span>
+              <span class="rack-badge sends-count-badge">${track.sendcnt}</span>
+            </div>
+            ${!isMaster ? `
+            <div class="rack-button rack-input ${inputInfo && inputInfo.recinput >= 0 ? 'has-items' : ''}" title="Record Input (Audio/MIDI)">
+              <span>IN</span>
+              <span class="rack-badge input-badge" id="input-badge-${track.index}">${inputDisplayName}</span>
+            </div>
+            ` : `
+            <div class="rack-button rack-master-out" title="Master Stereo Output">
+              <span>OUT</span>
+              <span class="rack-badge" style="color: var(--accent-gold);">1/2</span>
+            </div>
+            `}
+          </div>
+        </div>
+
+        <div class="strip-pan-section">
+          <div class="pan-label-row">
+            <span>PAN</span>
+            <span class="pan-val-readout">${formatPan(track.pan)}</span>
+          </div>
+          <div class="pan-slider-container">
+            <input type="range" class="pan-slider" min="-1" max="1" step="0.01" value="${track.pan}" />
+          </div>
+        </div>
+
+        <div class="strip-buttons-grid">
+          <button class="btn-ctl btn-mute ${isMuted ? 'mute-on' : ''}">M</button>
+          <button class="btn-ctl btn-solo ${isSoloed ? 'solo-on' : ''}">S</button>
+          ${!isMaster ? `<button class="btn-ctl btn-rec ${isArmed ? 'rec-on' : ''}">R</button>` : ''}
+          <button class="btn-ctl btn-fx-toggle ${hasFx ? 'fx-on' : 'fx-bypassed'}" style="${isMaster ? 'grid-column: span 2;' : ''}">FX</button>
+        </div>
+
+        <div class="strip-fader-section">
+          <div class="db-scale">
+            <span>+12</span>
+            <span>+6</span>
+            <span class="unity">0</span>
+            <span>-6</span>
+            <span>-12</span>
+            <span>-18</span>
+            <span>-24</span>
+            <span>-36</span>
+            <span>-inf</span>
+          </div>
+
+          <div class="fader-track-container" id="fader-container-${track.index}">
+            <div class="fader-rail"></div>
+            <div class="fader-cap" id="fader-cap-${track.index}"></div>
+          </div>
+
+          <div class="stereo-meters">
+            <div class="meter-bar">
+              <div class="meter-clip-led" id="clip-l-${track.index}"></div>
+              <div class="meter-fill" id="meter-l-${track.index}"></div>
+            </div>
+            <div class="meter-bar">
+              <div class="meter-clip-led" id="clip-r-${track.index}"></div>
+              <div class="meter-fill" id="meter-r-${track.index}"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="strip-footer">
+          <div class="vol-readout" title="Double-click to reset to 0.0 dB">${formatDb(track.volume)}</div>
+        </div>
+      `;
+
+      bindStripEvents(strip, track);
+      return strip;
+    }
+
+    function renderAllStrips() {
+      const normalContainer = document.getElementById("tracks-container");
+      const masterContainer = document.getElementById("master-strip-wrapper");
+
+      normalContainer.innerHTML = "";
+      masterContainer.innerHTML = "";
+
+      state.tracks.forEach(t => {
+        const el = createStripElement(t);
+        if (t.index === 0) {
+          masterContainer.appendChild(el);
+        } else {
+          normalContainer.appendChild(el);
+        }
+        updateFaderCapPosition(t.index, t.volume);
+      });
+    }
+
+    function updateStripDOM(track) {
+      const strip = document.getElementById("strip-" + track.index);
+      if (!strip) return;
+
+      const isMuted = (track.flags & 8) !== 0;
+      const isSoloed = (track.flags & 16) !== 0;
+      const isArmed = (track.flags & 64) !== 0;
+      const hasFx = (track.flags & 4) !== 0;
+
+      const muteBtn = strip.querySelector(".btn-mute");
+      if (muteBtn) muteBtn.className = "btn-ctl btn-mute" + (isMuted ? " mute-on" : "");
+
+      const soloBtn = strip.querySelector(".btn-solo");
+      if (soloBtn) soloBtn.className = "btn-ctl btn-solo" + (isSoloed ? " solo-on" : "");
+
+      const recBtn = strip.querySelector(".btn-rec");
+      if (recBtn) recBtn.className = "btn-ctl btn-rec" + (isArmed ? " rec-on" : "");
+
+      const fxBtn = strip.querySelector(".btn-fx-toggle");
+      if (fxBtn) fxBtn.className = "btn-ctl btn-fx-toggle" + (hasFx ? " fx-on" : " fx-bypassed");
+
+      const fxCountBadge = strip.querySelector(".fx-count-badge");
+      if (fxCountBadge) fxCountBadge.textContent = hasFx ? "ON" : "ADD";
+
+      const sendCountBadge = strip.querySelector(".sends-count-badge");
+      if (sendCountBadge) sendCountBadge.textContent = track.sendcnt;
+
+      const panSlider = strip.querySelector(".pan-slider");
+      const panReadout = strip.querySelector(".pan-val-readout");
+      if (panSlider && document.activeElement !== panSlider) {
+        panSlider.value = track.pan;
+        if (panReadout) panReadout.textContent = formatPan(track.pan);
+      }
+
+      const volReadout = strip.querySelector(".vol-readout");
+      if (volReadout) volReadout.textContent = formatDb(track.volume);
+
+      if (!strip.isDraggingFader) {
+        updateFaderCapPosition(track.index, track.volume);
+      }
+
+      updateMeters(track);
+    }
+
+    function updateFaderCapPosition(trackIndex, vol) {
+      const cap = document.getElementById("fader-cap-" + trackIndex);
+      const container = document.getElementById("fader-container-" + trackIndex);
+      if (!cap || !container) return;
+
+      const norm = volToFaderNorm(vol);
+      const containerHeight = container.clientHeight || 160;
+      const travel = Math.max(0, containerHeight - 38);
+      const topPx = (1 - norm) * travel;
+      cap.style.top = `${topPx + 19}px`;
+    }
+
+    function updateMeters(track) {
+      const meterL = document.getElementById("meter-l-" + track.index);
+      const meterR = document.getElementById("meter-r-" + track.index);
+      const clipL = document.getElementById("clip-l-" + track.index);
+      const clipR = document.getElementById("clip-r-" + track.index);
+      if (!meterL || !meterR) return;
+
+      const peakDb = track.peak / 10;
+      let pct = 0;
+      if (peakDb > -60) {
+        pct = Math.min(100, Math.max(0, ((peakDb + 60) / 66) * 100));
+      }
+
+      meterL.style.height = `${pct}%`;
+      meterR.style.height = `${pct}%`;
+
+      if (peakDb >= 0) {
+        if (clipL) clipL.classList.add("clipped");
+        if (clipR) clipR.classList.add("clipped");
+      }
+    }
+
+    // Strip Interactive Event Listeners
+    function bindStripEvents(strip, track) {
+      const idx = track.index;
+
+      const muteBtn = strip.querySelector(".btn-mute");
+      if (muteBtn) {
+        muteBtn.addEventListener("click", () => {
+          wwr_req(`SET/TRACK/${idx}/MUTE/-1;TRACK/${idx}`);
+        });
+      }
+
+      const soloBtn = strip.querySelector(".btn-solo");
+      if (soloBtn) {
+        soloBtn.addEventListener("click", () => {
+          wwr_req(`SET/TRACK/${idx}/SOLO/-1;TRACK/${idx}`);
+        });
+      }
+
+      const recBtn = strip.querySelector(".btn-rec");
+      if (recBtn) {
+        recBtn.addEventListener("click", () => {
+          wwr_req(`SET/TRACK/${idx}/RECARM/-1;TRACK/${idx}`);
+        });
+      }
+
+      const fxBtn = strip.querySelector(".btn-fx-toggle");
+      if (fxBtn) {
+        fxBtn.addEventListener("click", () => {
+          wwr_req(`SET/TRACK/${idx}/FX/-1;TRACK/${idx}`);
+        });
+      }
+
+      const panSlider = strip.querySelector(".pan-slider");
+      const panReadout = strip.querySelector(".pan-val-readout");
+      if (panSlider) {
+        panSlider.addEventListener("input", (e) => {
+          const val = parseFloat(e.target.value);
+          if (panReadout) panReadout.textContent = formatPan(val);
+          wwr_req(`SET/TRACK/${idx}/PAN/${val.toFixed(3)}`);
+        });
+        panSlider.addEventListener("dblclick", () => {
+          panSlider.value = 0;
+          if (panReadout) panReadout.textContent = "C";
+          wwr_req(`SET/TRACK/${idx}/PAN/0`);
+        });
+      }
+
+      // Fader Dragging
+      const container = strip.querySelector(".fader-track-container");
+      function handleFaderPointer(e) {
+        const rect = container.getBoundingClientRect();
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        const yOffset = clientY - rect.top;
+        const norm = 1 - Math.max(0, Math.min(1, yOffset / rect.height));
+        const newVol = faderNormToVol(norm);
+
+        track.volume = newVol;
+        updateFaderCapPosition(idx, newVol);
+        const volReadout = strip.querySelector(".vol-readout");
+        if (volReadout) volReadout.textContent = formatDb(newVol);
+
+        wwr_req(`SET/TRACK/${idx}/VOL/${newVol.toFixed(6)}`);
+      }
+
+      if (container) {
+        container.addEventListener("pointerdown", (e) => {
+          strip.isDraggingFader = true;
+          container.setPointerCapture(e.pointerId);
+          handleFaderPointer(e);
+
+          const onMove = (moveEvt) => {
+            if (strip.isDraggingFader) handleFaderPointer(moveEvt);
+          };
+          const onUp = (upEvt) => {
+            strip.isDraggingFader = false;
+            container.removeEventListener("pointermove", onMove);
+            container.removeEventListener("pointerup", onUp);
+            container.removeEventListener("pointercancel", onUp);
+          };
+
+          container.addEventListener("pointermove", onMove);
+          container.addEventListener("pointerup", onUp);
+          container.addEventListener("pointercancel", onUp);
+        });
+
+        container.addEventListener("dblclick", () => {
+          track.volume = 1.0;
+          updateFaderCapPosition(idx, 1.0);
+          const volReadout = strip.querySelector(".vol-readout");
+          if (volReadout) volReadout.textContent = "0.0 dB";
+          wwr_req(`SET/TRACK/${idx}/VOL/1.0`);
+        });
+      }
+
+      // Rack FX Button
+      const rackFxBtn = strip.querySelector(".rack-fx");
+      if (rackFxBtn) {
+        rackFxBtn.addEventListener("click", () => {
+          openFxDrawer(track);
+        });
+      }
+
+      // Rack Sends Button
+      const rackSendsBtn = strip.querySelector(".rack-sends");
+      if (rackSendsBtn) {
+        rackSendsBtn.addEventListener("click", () => {
+          openSendsDrawer(track);
+        });
+      }
+
+      // Rack Input Button (Opens Input Select Modal)
+      const rackInputBtn = strip.querySelector(".rack-input");
+      if (rackInputBtn) {
+        rackInputBtn.addEventListener("click", () => {
+          openInputSelectModal(track);
+        });
+      }
+
+      // Clip Reset
+      const clipL = strip.querySelector(".meter-clip-led:first-child");
+      const clipR = strip.querySelector(".meter-clip-led:last-child");
+      [clipL, clipR].forEach(c => {
+        if (c) c.addEventListener("click", () => {
+          if (clipL) clipL.classList.remove("clipped");
+          if (clipR) clipR.classList.remove("clipped");
+        });
+      });
+    }
+
+    // ============================================================
+    // INPUT SELECTION MODAL & MANAGEMENT
+    // ============================================================
+
+    async function openInputSelectModal(track) {
+      state.activeInputTrack = track;
+      const modal = document.getElementById("modal-input-select");
+      document.getElementById("input-modal-track-name").textContent = `Track Input: ${track.name}`;
+
+      const currentInputInfo = state.trackInputsMap[track.index];
+      const curName = currentInputInfo ? currentInputInfo.name : "In 1";
+      document.getElementById("input-modal-current").textContent = `Current Input: ${curName}`;
+
+      const monState = currentInputInfo ? currentInputInfo.recmon : 1;
+      updateMonitoringButtonsUI(monState);
+
+      if (!state.projectInputs) {
+        try {
+          state.projectInputs = await callBridge("get_project_inputs");
+        } catch (e) {
+          console.error("Failed to load project inputs:", e);
+        }
+      }
+
+      renderInputCategory("mono");
+      modal.classList.add("open");
+    }
+
+    function updateMonitoringButtonsUI(monState) {
+      const bOff = document.getElementById("btn-mon-off");
+      const bOn = document.getElementById("btn-mon-on");
+      const bAuto = document.getElementById("btn-mon-auto");
+
+      bOff.className = "btn-ctl" + (monState === 0 ? " solo-on" : "");
+      bOn.className = "btn-ctl" + (monState === 1 ? " mute-on" : "");
+      bAuto.className = "btn-ctl" + (monState === 2 ? " rec-on" : "");
+    }
+
+    function renderInputCategory(category) {
+      const container = document.getElementById("modal-input-results");
+      container.innerHTML = "";
+
+      const inputs = state.projectInputs || { mono: [], stereo: [], midi: [] };
+      const currentTrack = state.activeInputTrack;
+      const currentInputInfo = state.trackInputsMap[currentTrack.index];
+      const curRecInput = currentInputInfo ? currentInputInfo.recinput : 0;
+
+      if (category === "none") {
+        const row = document.createElement("div");
+        row.className = "plugin-row-item";
+        row.innerHTML = `
+          <div>
+            <div class="plugin-row-title">Input Disabled (None)</div>
+            <div class="plugin-row-sub">Track will not record audio or MIDI signals</div>
+          </div>
+          <button class="btn-view" style="background: var(--accent-gold); color: #000; font-weight: bold; font-size: 12px; min-height: 32px;">Select</button>
+        `;
+        row.addEventListener("click", () => selectTrackInput(-1, "None"));
+        container.appendChild(row);
+        return;
+      }
+
+      let list = [];
+      if (category === "mono") {
+        list = inputs.mono || [];
+      } else if (category === "stereo") {
+        list = inputs.stereo || [];
+      } else if (category === "midi") {
+        list = inputs.midi || [];
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 30px;">No inputs for this category found on the audio device</div>`;
+        return;
+      }
+
+      list.forEach(item => {
+        const isCurrent = (curRecInput === item.id);
+        const row = document.createElement("div");
+        row.className = "plugin-row-item" + (isCurrent ? " is-current" : "");
+        if (isCurrent) row.style.borderColor = "var(--accent-cyan)";
+
+        row.innerHTML = `
+          <div>
+            <div class="plugin-row-title">${item.name}</div>
+            <div class="plugin-row-sub">ID: ${item.id} ${isCurrent ? '• (Current Input)' : ''}</div>
+          </div>
+          <button class="btn-view" style="background: ${isCurrent ? 'var(--accent-green)' : 'var(--accent-cyan)'}; color: #000; font-weight: bold; font-size: 11px;">
+            ${isCurrent ? 'Active' : 'Select'}
+          </button>
+        `;
+
+        row.addEventListener("click", () => selectTrackInput(item.id, item.name));
+        container.appendChild(row);
+      });
+    }
+
+    async function selectTrackInput(inputId, displayName) {
+      if (!state.activeInputTrack) return;
+      const trackIdx = state.activeInputTrack.index;
+
+      try {
+        await callBridge("set_track_input", { track_index: trackIdx, input_id: inputId });
+        state.trackInputsMap[trackIdx] = {
+          ...(state.trackInputsMap[trackIdx] || {}),
+          recinput: inputId,
+          name: displayName
+        };
+
+        const badge = document.getElementById("input-badge-" + trackIdx);
+        if (badge) {
+          badge.textContent = displayName;
+          const btn = badge.closest(".rack-input");
+          if (btn) btn.classList.toggle("has-items", inputId >= 0);
+        }
+
+        document.getElementById("modal-input-select").classList.remove("open");
+      } catch (err) {
+        alert("Failed to set track input: " + err);
+      }
+    }
+
+    // Monitoring handlers
+    document.getElementById("btn-mon-off").addEventListener("click", () => setMonitoring(0));
+    document.getElementById("btn-mon-on").addEventListener("click", () => setMonitoring(1));
+    document.getElementById("btn-mon-auto").addEventListener("click", () => setMonitoring(2));
+
+    async function setMonitoring(val) {
+      if (!state.activeInputTrack) return;
+      const trackIdx = state.activeInputTrack.index;
+      updateMonitoringButtonsUI(val);
+      try {
+        await callBridge("set_track_input", { track_index: trackIdx, input_id: (state.trackInputsMap[trackIdx] || {}).recinput || 0, recmon: val });
+        if (state.trackInputsMap[trackIdx]) state.trackInputsMap[trackIdx].recmon = val;
+      } catch (e) { console.error(e); }
+    }
+
+    // ============================================================
+    // TRACK FX MANAGER DRAWER
+    // ============================================================
+
+    async function openFxDrawer(track) {
+      state.activeDrawerTrack = track;
+      state.activeDrawerType = "fx";
+
+      document.getElementById("fx-drawer-track-name").textContent = track.name;
+      document.getElementById("fx-drawer-track-idx").textContent = track.index === 0 ? "MASTER" : `#${track.index}`;
+      document.getElementById("fx-drawer").classList.add("open");
+      document.getElementById("sends-drawer").classList.remove("open");
+
+      await loadTrackFxChain(track.index);
+    }
+
+    async function loadTrackFxChain(trackIdx) {
+      const container = document.getElementById("fx-drawer-body");
+      container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 30px;">Loading track plugins...</div>`;
+
+      try {
+        const data = await callBridge("get_track_fx_chain", { track_index: trackIdx });
+        if (!data || !data.fx || data.fx.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; color: var(--text-muted); padding: 40px 20px;">
+              <div style="font-size: 28px; margin-bottom: 8px;">🎛️</div>
+              <div style="font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 4px;">No plugins on this track</div>
+              <div style="font-size: 12px; margin-bottom: 16px;">Click the button below to add an EQ, compressor, Waves, FabFilter, or other plugin.</div>
+              <button class="btn-view" onclick="document.getElementById('btn-open-add-fx').click()" style="margin: 0 auto; background: var(--accent-cyan); color: #000; font-weight: bold;">+ Add First Plugin</button>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = "";
+        data.fx.forEach(fx => {
+          const card = createFxCard(trackIdx, fx);
+          container.appendChild(card);
+        });
+      } catch (err) {
+        container.innerHTML = `
+          <div style="color: var(--accent-red); padding: 20px; background: rgba(255, 51, 68, 0.1); border-radius: 6px;">
+            <b>FX Bridge Error:</b> ${err}<br>
+            <small style="color: var(--text-muted);">Ensure the companion Lua bridge script is running in REAPER.</small>
+          </div>
+        `;
+      }
+    }
+
+    function createFxCard(trackIdx, fx) {
+      const card = document.createElement("div");
+      card.className = "fx-card" + (!fx.enabled ? " bypassed" : "");
+      card.id = `fx-card-${trackIdx}-${fx.index}`;
+
+      card.innerHTML = `
+        <div class="fx-card-header">
+          <div class="fx-name-area">
+            <button class="fx-power-btn ${fx.enabled ? 'active' : ''}" title="Toggle Plugin Bypass (On / Off)">⏻</button>
+            <div class="fx-title" title="${fx.raw_name}">${fx.name}</div>
+          </div>
+          <div class="fx-card-actions">
+            <button class="fx-mini-btn btn-ui" title="Open Plugin Window in REAPER">UI</button>
+            <button class="fx-mini-btn btn-params" title="Show / Hide Parameters">Params ▾</button>
+            <button class="fx-mini-btn btn-up" title="Move Plugin Up">▲</button>
+            <button class="fx-mini-btn btn-down" title="Move Plugin Down">▼</button>
+            <button class="fx-mini-btn btn-del" title="Remove Plugin">&times;</button>
+          </div>
+        </div>
+
+        <div class="fx-card-body" style="display: none;">
+          <div class="fx-preset-row">
+            <button class="preset-nav-btn btn-prev-preset">◀</button>
+            <span class="preset-label">${fx.preset || 'Default Preset'}</span>
+            <button class="preset-nav-btn btn-next-preset">▶</button>
+          </div>
+          <div class="params-container">
+            <div style="text-align: center; color: var(--text-dim); padding: 8px;">Tap "Params ▾" to view plugin controls</div>
+          </div>
+        </div>
+      `;
+
+      // Power Toggle
+      const powerBtn = card.querySelector(".fx-power-btn");
+      powerBtn.addEventListener("click", async () => {
+        try {
+          const res = await callBridge("toggle_fx", { track_index: trackIdx, fx_index: fx.index });
+          fx.enabled = res.enabled;
+          card.classList.toggle("bypassed", !fx.enabled);
+          powerBtn.classList.toggle("active", fx.enabled);
+        } catch (e) { alert("FX Bypass Toggle Error: " + e); }
+      });
+
+      // Show UI in REAPER
+      card.querySelector(".btn-ui").addEventListener("click", () => {
+        callBridge("show_fx_ui", { track_index: trackIdx, fx_index: fx.index, show: true });
+      });
+
+      // Presets
+      card.querySelector(".btn-prev-preset").addEventListener("click", async () => {
+        const res = await callBridge("navigate_preset", { track_index: trackIdx, fx_index: fx.index, dir: -1 });
+        card.querySelector(".preset-label").textContent = res.preset || "Default";
+      });
+      card.querySelector(".btn-next-preset").addEventListener("click", async () => {
+        const res = await callBridge("navigate_preset", { track_index: trackIdx, fx_index: fx.index, dir: 1 });
+        card.querySelector(".preset-label").textContent = res.preset || "Default";
+      });
+
+      // Delete FX
+      card.querySelector(".btn-del").addEventListener("click", async () => {
+        if (confirm(`Remove plugin "${fx.name}"?`)) {
+          await callBridge("remove_fx", { track_index: trackIdx, fx_index: fx.index });
+          await loadTrackFxChain(trackIdx);
+        }
+      });
+
+      // Reorder Up / Down
+      card.querySelector(".btn-up").addEventListener("click", async () => {
+        if (fx.index > 0) {
+          await callBridge("reorder_fx", { track_index: trackIdx, src_index: fx.index, dst_index: fx.index - 1 });
+          await loadTrackFxChain(trackIdx);
+        }
+      });
+      card.querySelector(".btn-down").addEventListener("click", async () => {
+        await callBridge("reorder_fx", { track_index: trackIdx, src_index: fx.index, dst_index: fx.index + 2 });
+        await loadTrackFxChain(trackIdx);
+      });
+
+      // Toggle Parameters View
+      const paramsBtn = card.querySelector(".btn-params");
+      const body = card.querySelector(".fx-card-body");
+      paramsBtn.addEventListener("click", async () => {
+        const isOpen = body.style.display !== "none";
+        body.style.display = isOpen ? "none" : "flex";
+        paramsBtn.textContent = isOpen ? "Params ▾" : "Hide ▴";
+
+        if (!isOpen) {
+          await loadFxParameters(trackIdx, fx.index, card.querySelector(".params-container"));
+        }
+      });
+
+      return card;
+    }
+
+    async function loadFxParameters(trackIdx, fxIdx, container) {
+      container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 8px;">Loading parameters...</div>`;
+      try {
+        const data = await callBridge("get_fx_params", { track_index: trackIdx, fx_index: fxIdx, count: 24 });
+        if (!data || !data.params || data.params.length === 0) {
+          container.innerHTML = `<div style="text-align: center; color: var(--text-dim);">No tweakable parameters available for this plugin</div>`;
+          return;
+        }
+
+        container.innerHTML = "";
+        data.params.forEach(param => {
+          const row = document.createElement("div");
+          row.className = "param-row";
+          row.innerHTML = `
+            <div class="param-header">
+              <span class="param-name" title="${param.name}">${param.name}</span>
+              <span class="param-val" id="pval-${fxIdx}-${param.index}">${param.formatted}</span>
+            </div>
+            <input type="range" class="param-slider" min="0" max="1" step="0.002" value="${param.value}" />
+          `;
+
+          const slider = row.querySelector(".param-slider");
+          const valLabel = row.querySelector(".param-val");
+
+          slider.addEventListener("input", (e) => {
+            const v = parseFloat(e.target.value);
+            valLabel.textContent = v.toFixed(3);
+            callBridge("set_fx_param", {
+              track_index: trackIdx,
+              fx_index: fxIdx,
+              param_index: param.index,
+              value: v
+            }).then(res => {
+              if (res && res.formatted) valLabel.textContent = res.formatted;
+            });
+          });
+
+          container.appendChild(row);
+        });
+      } catch (err) {
+        container.innerHTML = `<div style="color: var(--accent-red);">Error loading parameters: ${err}</div>`;
+      }
+    }
+
+    // ============================================================
+    // TRACK SENDS MANAGER DRAWER
+    // ============================================================
+
+    async function openSendsDrawer(track) {
+      state.activeDrawerTrack = track;
+      state.activeDrawerType = "sends";
+
+      document.getElementById("sends-drawer-track-name").textContent = track.name;
+      document.getElementById("sends-drawer-track-idx").textContent = track.index === 0 ? "MASTER" : `#${track.index}`;
+      document.getElementById("sends-drawer").classList.add("open");
+      document.getElementById("fx-drawer").classList.remove("open");
+
+      await loadTrackSends(track.index);
+    }
+
+    async function loadTrackSends(trackIdx) {
+      const container = document.getElementById("sends-drawer-body");
+      container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 30px;">Loading track routing...</div>`;
+
+      try {
+        const data = await callBridge("get_detailed_sends", { track_index: trackIdx });
+        container.innerHTML = "";
+
+        const sendsHeader = document.createElement("div");
+        sendsHeader.style.cssText = "font-weight: bold; font-size: 13px; color: #fff; margin-bottom: 4px;";
+        sendsHeader.textContent = "Track Sends (Outputs):";
+        container.appendChild(sendsHeader);
+
+        if (!data || !data.sends || data.sends.length === 0) {
+          const emptySends = document.createElement("div");
+          emptySends.style.cssText = "color: var(--text-muted); font-size: 12px; margin-bottom: 16px;";
+          emptySends.textContent = "No active sends on this track.";
+          container.appendChild(emptySends);
+        } else {
+          data.sends.forEach(send => {
+            const card = document.createElement("div");
+            card.className = "send-item-card";
+            card.innerHTML = `
+              <div class="send-top-row">
+                <div class="send-dest-title">
+                  <span style="background: var(--accent-gold); color: #000; font-size: 9px; padding: 1px 4px; border-radius: 2px;">SEND</span>
+                  <span>${send.dest_track_name}</span>
+                </div>
+                <div style="display: flex; gap: 4px;">
+                  <button class="btn-ctl btn-send-mute ${send.mute ? 'mute-on' : ''}" style="width: 24px; height: 22px;">M</button>
+                  <button class="fx-mini-btn btn-del-send">&times;</button>
+                </div>
+              </div>
+              <div class="send-slider-row">
+                <span style="font-size: 10px; color: var(--text-muted); width: 25px;">VOL</span>
+                <input type="range" class="send-vol-slider" min="0" max="2" step="0.01" value="${send.volume}" />
+                <span class="send-val-badge">${formatDb(send.volume)}</span>
+              </div>
+            `;
+
+            const volSlider = card.querySelector(".send-vol-slider");
+            const valBadge = card.querySelector(".send-val-badge");
+            volSlider.addEventListener("input", (e) => {
+              const v = parseFloat(e.target.value);
+              valBadge.textContent = formatDb(v);
+              wwr_req(`SET/TRACK/${trackIdx}/SEND/${send.send_index}/VOL/${v.toFixed(6)}`);
+            });
+
+            const muteBtn = card.querySelector(".btn-send-mute");
+            muteBtn.addEventListener("click", () => {
+              wwr_req(`SET/TRACK/${trackIdx}/SEND/${send.send_index}/MUTE/-1`);
+              muteBtn.classList.toggle("mute-on");
+            });
+
+            card.querySelector(".btn-del-send").addEventListener("click", async () => {
+              if (confirm(`Delete send to "${send.dest_track_name}"?`)) {
+                await callBridge("remove_send", { src_track: trackIdx, send_index: send.send_index });
+                await loadTrackSends(trackIdx);
+              }
+            });
+
+            container.appendChild(card);
+          });
+        }
+
+        if (data && data.receives && data.receives.length > 0) {
+          const recvsHeader = document.createElement("div");
+          recvsHeader.style.cssText = "font-weight: bold; font-size: 13px; color: #fff; margin-top: 14px; margin-bottom: 4px;";
+          recvsHeader.textContent = "Track Receives (Inputs):";
+          container.appendChild(recvsHeader);
+
+          data.receives.forEach(recv => {
+            const card = document.createElement("div");
+            card.className = "send-item-card";
+            card.innerHTML = `
+              <div class="send-top-row">
+                <div class="send-dest-title">
+                  <span style="background: var(--accent-cyan); color: #000; font-size: 9px; padding: 1px 4px; border-radius: 2px;">RECV</span>
+                  <span>${recv.src_track_name}</span>
+                </div>
+              </div>
+              <div class="send-slider-row">
+                <span style="font-size: 10px; color: var(--text-muted); width: 25px;">VOL</span>
+                <span class="send-val-badge" style="text-align: left;">${formatDb(recv.volume)}</span>
+              </div>
+            `;
+            container.appendChild(card);
+          });
+        }
+      } catch (err) {
+        container.innerHTML = `<div style="color: var(--accent-red); padding: 20px;">Routing error: ${err}</div>`;
+      }
+    }
+
+    // ============================================================
+    // MODAL: ADD PLUGIN SEARCH & CATALOG (ALL 843+ PLUGINS!)
+    // ============================================================
+
+    state.catalog = {
+      category: "all",
+      query: "",
+      offset: 0,
+      total: 0,
+      isLoading: false
+    };
+
+    async function openAddFxModal() {
+      const modal = document.getElementById("modal-add-fx");
+      modal.classList.add("open");
+      const searchInput = document.getElementById("fx-search-input");
+      searchInput.value = "";
+      
+      // Reset active tab to 'all'
+      document.querySelectorAll("#fx-cat-tabs .cat-pill").forEach(p => p.classList.remove("active"));
+      const allTab = document.querySelector("#fx-cat-tabs .cat-pill[data-cat='all']");
+      if (allTab) allTab.classList.add("active");
+
+      loadPluginCatalog("all", "", 0, false);
+    }
+
+    async function loadPluginCatalog(category = "all", query = "", offset = 0, append = false) {
+      if (state.catalog.isLoading && append) return;
+      state.catalog.isLoading = true;
+      state.catalog.category = category;
+      state.catalog.query = query;
+      state.catalog.offset = offset;
+
+      const container = document.getElementById("modal-fx-results");
+      if (!append) {
+        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 30px;">Loading plugins...</div>`;
+      }
+
+      // Remove existing "Load More" button if appending
+      const existingMoreBtn = container.querySelector(".btn-load-more-row");
+      if (existingMoreBtn) existingMoreBtn.remove();
+
+      try {
+        const res = await callBridge("search_fx", {
+          category: category,
+          query: query,
+          offset: offset,
+          limit: 80
+        });
+
+        if (!res || !res.results || res.results.length === 0) {
+          if (!append) {
+            container.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 40px;">No plugins found matching "${query || category}"</div>`;
+          }
+          state.catalog.isLoading = false;
+          return;
+        }
+
+        if (!append) {
+          container.innerHTML = "";
+          const header = document.createElement("div");
+          header.className = "catalog-summary-header";
+          header.style.cssText = "font-size: 12px; color: var(--text-muted); padding: 4px 6px 8px 6px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #232a36; margin-bottom: 8px;";
+          
+          let catLabel = "All Plugins";
+          if (category === "waves") catLabel = "Waves Audio";
+          else if (category === "fabfilter") catLabel = "FabFilter";
+          else if (category === "valhalla") catLabel = "Valhalla DSP";
+          else if (category === "cockos") catLabel = "Cockos Essentials";
+          else if (category === "izotope") catLabel = "iZotope & Creative";
+          else if (category === "js") catLabel = "JS Plugins";
+          else if (category === "instruments") catLabel = "Instruments";
+
+          header.innerHTML = `
+            <span><b>${catLabel}</b> ${query ? `matching "${query}"` : ""}: <b>${res.total}</b> total installed</span>
+            <span style="color: var(--accent-cyan); font-size: 11px;">Showing ${Math.min(res.total, offset + res.count)} of ${res.total}</span>
+          `;
+          container.appendChild(header);
+        } else {
+          const counterSpan = container.querySelector(".catalog-summary-header span:last-child");
+          if (counterSpan) {
+            counterSpan.textContent = `Showing ${Math.min(res.total, offset + res.count)} of ${res.total}`;
+          }
+        }
+
+        state.catalog.total = res.total;
+
+        // Render plugin rows
+        res.results.forEach(plug => {
+          const row = document.createElement("div");
+          row.className = "plugin-row-item";
+          row.style.cssText = "display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #13171e; border: 1px solid #252d3a; border-radius: 6px; margin-bottom: 6px;";
+          row.innerHTML = `
+            <div style="flex: 1; overflow: hidden; padding-right: 12px;">
+              <div class="plugin-row-title" style="font-weight: 700; font-size: 14px; color: #fff; margin-bottom: 2px;">${plug.name}</div>
+              <div class="plugin-row-sub" style="font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${plug.dev ? `${plug.dev} • ` : ""}${plug.full}</div>
+            </div>
+            <button class="btn-view" style="background: var(--accent-cyan); color: #000; font-weight: bold; font-size: 12px; min-height: 36px; padding: 0 16px; border-radius: 5px; flex-shrink: 0;">+ Insert</button>
+          `;
+          row.addEventListener("click", () => {
+            insertPluginToActiveTrack(plug.full);
+          });
+          container.appendChild(row);
+        });
+
+        // Add "Load More" button if there are more plugins
+        if (res.has_more) {
+          const remaining = res.total - (offset + res.count);
+          const moreRow = document.createElement("div");
+          moreRow.className = "btn-load-more-row";
+          moreRow.style.cssText = "text-align: center; padding: 16px 0 24px 0;";
+          moreRow.innerHTML = `
+            <button class="btn-view" style="background: #252e3d; border: 1px solid #3c4a60; color: #fff; font-weight: bold; font-size: 13px; min-height: 42px; padding: 0 24px; border-radius: 6px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.4); cursor: pointer;">
+              Load More (${remaining} remaining)...
+            </button>
+          `;
+          const btnMore = moreRow.querySelector("button");
+          btnMore.addEventListener("click", (e) => {
+            e.stopPropagation();
+            btnMore.textContent = "Loading next batch...";
+            loadPluginCatalog(category, query, offset + res.count, true);
+          });
+          container.appendChild(moreRow);
+        }
+
+      } catch (err) {
+        if (!append) {
+          container.innerHTML = `<div style="color: var(--accent-red); padding: 20px;">Error loading plugins: ${err}</div>`;
+        } else {
+          const retryRow = document.createElement("div");
+          retryRow.className = "btn-load-more-row";
+          retryRow.style.cssText = "text-align: center; padding: 12px 0;";
+          retryRow.innerHTML = `
+            <button class="btn-view" style="background: rgba(255,183,3,0.15); border: 1px solid var(--accent-gold); color: var(--accent-gold); font-size: 12px; padding: 8px 16px; margin: 0 auto; cursor: pointer;">
+              Connection hiccup. Tap to retry loading more
+            </button>
+          `;
+          retryRow.querySelector("button").addEventListener("click", () => {
+            loadPluginCatalog(category, query, offset, true);
+          });
+          container.appendChild(retryRow);
+        }
+      } finally {
+        state.catalog.isLoading = false;
+      }
+    }
+
+    async function insertPluginToActiveTrack(fxName) {
+      if (!state.activeDrawerTrack) return;
+      const trackIdx = state.activeDrawerTrack.index;
+
+      document.getElementById("modal-add-fx").classList.remove("open");
+      try {
+        await callBridge("add_fx", { track_index: trackIdx, fx_name: fxName });
+        await loadTrackFxChain(trackIdx);
+      } catch (err) {
+        alert("Could not insert plugin: " + err);
+      }
+    }
+
+    // ============================================================
+    // MODAL: ADD SEND
+    // ============================================================
+
+    function openAddSendModal() {
+      if (!state.activeDrawerTrack) return;
+      const currentIdx = state.activeDrawerTrack.index;
+      const modal = document.getElementById("modal-add-send");
+      const listContainer = document.getElementById("modal-send-targets");
+
+      listContainer.innerHTML = "";
+      state.tracks.forEach(tr => {
+        if (tr.index === currentIdx) return;
+
+        const row = document.createElement("div");
+        row.className = "plugin-row-item";
+        row.innerHTML = `
+          <div>
+            <div class="plugin-row-title">${tr.name}</div>
+            <div class="plugin-row-sub">${tr.index === 0 ? 'Master Track' : `Track #${tr.index}`}</div>
+          </div>
+          <button class="btn-view" style="background: var(--accent-gold); color: #000; font-weight: bold; font-size: 12px; min-height: 32px;">Create Send</button>
+        `;
+
+        row.addEventListener("click", async () => {
+          modal.classList.remove("open");
+          try {
+            await callBridge("create_send", { src_track: currentIdx, dst_track: tr.index });
+            await loadTrackSends(currentIdx);
+          } catch (e) { alert("Send creation error: " + e); }
+        });
+
+        listContainer.appendChild(row);
+      });
+
+      modal.classList.add("open");
+    }
+
+    // ============================================================
+    // GLOBAL UI LISTENERS & SHORTCUTS
+    // ============================================================
+
+    function initGlobalEvents() {
+      // Transport
+      document.getElementById("btn-play").addEventListener("click", () => wwr_req("1007"));
+      document.getElementById("btn-pause").addEventListener("click", () => wwr_req("1008"));
+      document.getElementById("btn-stop").addEventListener("click", () => wwr_req("1016"));
+      document.getElementById("btn-record").addEventListener("click", () => wwr_req("1013"));
+      document.getElementById("btn-rewind").addEventListener("click", () => wwr_req("40042"));
+      document.getElementById("btn-repeat").addEventListener("click", () => wwr_req("SET/REPEAT/-1"));
+
+      // Drawer close buttons
+      document.getElementById("btn-close-fx-drawer").addEventListener("click", () => {
+        document.getElementById("fx-drawer").classList.remove("open");
+      });
+      document.getElementById("btn-close-sends-drawer").addEventListener("click", () => {
+        document.getElementById("sends-drawer").classList.remove("open");
+      });
+
+      // Drops badge reset click
+      const badgeDrops = document.getElementById("badge-drops");
+      if (badgeDrops) {
+        badgeDrops.addEventListener("click", async () => {
+          try {
+            await callBridge("reset_dropouts");
+            document.getElementById("val-drops").textContent = "0";
+            badgeDrops.className = "status-badge perf-badge drops-zero";
+            badgeDrops.title = "Audio Buffer: Clean (0 dropouts)";
+          } catch (e) {}
+        });
+      }
+
+      // Modals
+      document.getElementById("btn-open-add-fx").addEventListener("click", openAddFxModal);
+      document.getElementById("btn-close-add-fx-modal").addEventListener("click", () => {
+        document.getElementById("modal-add-fx").classList.remove("open");
+      });
+
+      document.getElementById("btn-open-add-send").addEventListener("click", openAddSendModal);
+      document.getElementById("btn-close-add-send-modal").addEventListener("click", () => {
+        document.getElementById("modal-add-send").classList.remove("open");
+      });
+
+      document.getElementById("btn-close-input-modal").addEventListener("click", () => {
+        document.getElementById("modal-input-select").classList.remove("open");
+      });
+
+      // Search input debouncer for full plugin library
+      let searchTimer = null;
+      document.getElementById("fx-search-input").addEventListener("input", (e) => {
+        clearTimeout(searchTimer);
+        const q = e.target.value.trim();
+        searchTimer = setTimeout(() => {
+          loadPluginCatalog(state.catalog.category || "all", q, 0, false);
+        }, 200);
+      });
+
+      // Category tabs in Add FX modal
+      document.querySelectorAll("#fx-cat-tabs .cat-pill").forEach(pill => {
+        pill.addEventListener("click", () => {
+          document.querySelectorAll("#fx-cat-tabs .cat-pill").forEach(p => p.classList.remove("active"));
+          pill.classList.add("active");
+          const cat = pill.dataset.cat;
+          const searchInput = document.getElementById("fx-search-input");
+          loadPluginCatalog(cat, searchInput.value.trim(), 0, false);
+        });
+      });
+
+      // Auto-load more on scroll in Add FX modal list (debounced for iPad momentum bounce)
+      const resultsContainer = document.getElementById("modal-fx-results");
+      let scrollLoadTimer = null;
+      if (resultsContainer) {
+        resultsContainer.addEventListener("scroll", () => {
+          if (state.catalog.isLoading) return;
+          clearTimeout(scrollLoadTimer);
+          scrollLoadTimer = setTimeout(() => {
+            if (state.catalog.isLoading) return;
+            const distFromBottom = resultsContainer.scrollHeight - resultsContainer.scrollTop - resultsContainer.clientHeight;
+            if (distFromBottom < 160) {
+              const moreBtn = resultsContainer.querySelector(".btn-load-more-row button");
+              if (moreBtn && !moreBtn.disabled && !moreBtn.dataset.loading) {
+                moreBtn.dataset.loading = "true";
+                moreBtn.click();
+              }
+            }
+          }, 80);
+        });
+      }
+
+      // Category tabs in Input Select modal
+      document.querySelectorAll("#input-cat-tabs .cat-pill").forEach(pill => {
+        pill.addEventListener("click", () => {
+          document.querySelectorAll("#input-cat-tabs .cat-pill").forEach(p => p.classList.remove("active"));
+          pill.classList.add("active");
+          renderInputCategory(pill.dataset.incat);
+        });
+      });
+
+      // Width mode toggle
+      document.getElementById("btn-zoom-width").addEventListener("click", () => {
+        state.stripWidthMode = (state.stripWidthMode + 1) % 3;
+        document.documentElement.style.setProperty("--strip-width", STRIP_WIDTHS[state.stripWidthMode]);
+      });
+
+      // Master toggle
+      document.getElementById("btn-master-toggle").addEventListener("click", () => {
+        const mw = document.getElementById("master-strip-wrapper");
+        mw.style.display = (mw.style.display === "none") ? "flex" : "none";
+      });
+
+      // Spacebar to Play/Stop
+      window.addEventListener("keydown", (e) => {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+        if (e.code === "Space") {
+          e.preventDefault();
+          wwr_req("40044");
+        }
+      });
+    }
+
+    // Dynamic Viewport Height Handler for iPad & Mobile Browsers
+    function updateDynamicViewport() {
+      const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      document.documentElement.style.setProperty("--app-height", `${h}px`);
+      if (state.tracks && state.tracks.length > 0) {
+        state.tracks.forEach(t => updateFaderCapPosition(t.index, t.volume));
+      }
+    }
+    window.addEventListener("resize", updateDynamicViewport);
+    window.addEventListener("orientationchange", updateDynamicViewport);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", updateDynamicViewport);
+    }
+
+    // Startup
+    window.addEventListener("DOMContentLoaded", () => {
+      updateDynamicViewport();
+      initGlobalEvents();
+      initGlobalEvents();
+      sendNextBatch();
+      setTimeout(syncTrackInputs, 300);
+    });
+  </script>
+</body>
+</html>
